@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+
+<title>Benecoins</title>
+
+<style>
+
+body{
+font-family:Arial;
+background:#0a1a33;
+color:white;
+padding:20px;
+}
+
+h1,h2{
+color:#4fc3ff;
+}
+
+.section{
+background:#10294d;
+padding:20px;
+border-radius:10px;
+margin-bottom:20px;
+}
+
+input,select,button{
+padding:10px;
+margin:5px 0;
+border-radius:8px;
+border:none;
+width:100%;
+}
+
+button{
+background:#4fc3ff;
+cursor:pointer;
+font-weight:bold;
+}
+
+li{
+background:#15376b;
+padding:10px;
+margin:5px 0;
+border-radius:8px;
+list-style:none;
+}
+
+.hidden{
+display:none;
+}
+
+.center{
+max-width:350px;
+margin:auto;
+margin-top:80px;
+}
+
+.coin{
+width:120px;
+height:120px;
+border-radius:100%;
+background:gold;
+color:#0a1a33;
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:60px;
+margin:auto;
+margin-bottom:20px;
+font-weight:bold;
+}
+
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+
+<div id="login" class="center">
+
+<div class="coin">B</div>
+
+<h1>Benecoins</h1>
+
+<input id="user" placeholder="usuario">
+<input id="pass" type="password" placeholder="senha">
+
+<button onclick="login()">Entrar</button>
+
+<p id="msg"></p>
+
+</div>
+
+<!-- PROFESSOR -->
+
+<div id="professor" class="hidden">
+
+<h1>Painel Professor</h1>
+
+<button onclick="logout()">Sair</button>
+
+<div class="section">
+
+<h2>Turma</h2>
+
+<select id="turmaSelect" onchange="carregarAlunos()"></select>
+
+</div>
+
+<div class="section">
+
+<h2>Aluno</h2>
+
+<select id="alunoSelect" onchange="mostrarAluno()"></select>
+
+<input id="valor" type="number" placeholder="valor">
+
+<button onclick="depositar()">Depositar</button>
+<button onclick="retirar()">Retirar</button>
+
+<p id="saldo"></p>
+
+</div>
+
+<div class="section">
+
+<h2>Histórico individual</h2>
+
+<ul id="historicoAluno"></ul>
+
+</div>
+
+<div class="section">
+
+<h2>Ranking da turma</h2>
+
+<ul id="ranking"></ul>
+
+</div>
+
+</div>
+
+<!-- ADMIN -->
+
+<div id="admin" class="hidden">
+
+<h1>Painel Admin</h1>
+
+<button onclick="logout()">Sair</button>
+
+<div class="section">
+
+<h2>Criar turma</h2>
+
+<input id="novaTurma">
+<button onclick="criarTurma()">Criar</button>
+
+<ul id="listaTurmas"></ul>
+
+</div>
+
+<div class="section">
+
+<h2>Adicionar aluno</h2>
+
+<select id="turmaAdmin" onchange="listarAlunosAdmin()"></select>
+
+<input id="novoAluno">
+
+<button onclick="criarAluno()">Adicionar</button>
+
+<ul id="listaAlunos"></ul>
+
+</div>
+
+<div class="section">
+
+<h2>Histórico geral</h2>
+
+<button onclick="limparHistorico()">Apagar tudo</button>
+
+<ul id="historicoGeral"></ul>
+
+</div>
+
+</div>
+
+<script>
+
+const contas={
+admin:"admin123",
+professor:"prof123"
+}
+
+let turmas=JSON.parse(localStorage.getItem("turmas"))||{}
+let historico=JSON.parse(localStorage.getItem("historico"))||[]
+
+function salvar(){
+
+localStorage.setItem("turmas",JSON.stringify(turmas))
+localStorage.setItem("historico",JSON.stringify(historico))
+
+}
+
+function login(){
+
+let u=user.value
+let s=pass.value
+
+if(contas[u]&&contas[u]==s){
+
+localStorage.setItem("tipo",u)
+
+mostrarTela()
+
+}else{
+
+msg.innerText="login inválido"
+
+}
+
+}
+
+function logout(){
+
+localStorage.clear()
+location.reload()
+
+}
+
+function mostrarTela(){
+
+loginDiv=document.getElementById("login")
+profDiv=document.getElementById("professor")
+adminDiv=document.getElementById("admin")
+
+loginDiv.classList.add("hidden")
+
+if(localStorage.getItem("tipo")=="admin"){
+
+adminDiv.classList.remove("hidden")
+carregarAdmin()
+
+}else{
+
+profDiv.classList.remove("hidden")
+carregarProfessor()
+
+}
+
+}
+
+function carregarProfessor(){
+
+let select=document.getElementById("turmaSelect")
+
+select.innerHTML=""
+
+for(let t in turmas){
+
+let op=document.createElement("option")
+op.text=t
+
+select.appendChild(op)
+
+}
+
+carregarAlunos()
+
+}
+
+function carregarAlunos(){
+
+let turma=turmaSelect.value
+let select=document.getElementById("alunoSelect")
+
+select.innerHTML=""
+
+if(!turma)return
+
+turmas[turma].forEach((a,i)=>{
+
+let op=document.createElement("option")
+op.value=i
+op.text=a.nome
+
+select.appendChild(op)
+
+})
+
+mostrarAluno()
+
+}
+
+function mostrarAluno(){
+
+let turma=turmaSelect.value
+let i=alunoSelect.value
+
+if(!turma)return
+
+let aluno=turmas[turma][i]
+
+saldo.innerText="saldo: "+aluno.saldo+" B"
+
+historicoAluno.innerHTML=""
+
+aluno.historico.forEach(h=>{
+
+let li=document.createElement("li")
+
+li.innerText=h.data+" - "+h.acao
+
+historicoAluno.appendChild(li)
+
+})
+
+ranking.innerHTML=""
+
+let lista=[...turmas[turma]].sort((a,b)=>b.saldo-a.saldo)
+
+lista.forEach(a=>{
+
+let li=document.createElement("li")
+
+li.innerText=a.nome+" - "+a.saldo
+
+ranking.appendChild(li)
+
+})
+
+}
+
+function registrar(turma,nome,texto){
+
+let h={
+
+data:new Date().toLocaleString(),
+
+turma:turma,
+
+aluno:nome,
+
+acao:texto
+
+}
+
+historico.push(h)
+
+turmas[turma].find(a=>a.nome==nome).historico.push(h)
+
+}
+
+function depositar(){
+
+let turma=turmaSelect.value
+
+let i=alunoSelect.value
+
+let v=Number(valor.value)
+
+if(v<=0)return
+
+turmas[turma][i].saldo+=v
+
+registrar(turma,turmas[turma][i].nome,"+"+v)
+
+salvar()
+
+mostrarAluno()
+
+}
+
+function retirar(){
+
+let turma=turmaSelect.value
+
+let i=alunoSelect.value
+
+let v=Number(valor.value)
+
+if(v<=0)return
+
+turmas[turma][i].saldo-=v
+
+registrar(turma,turmas[turma][i].nome,"-"+v)
+
+salvar()
+
+mostrarAluno()
+
+}
+
+function carregarAdmin(){
+
+turmaAdmin.innerHTML=""
+listaTurmas.innerHTML=""
+
+for(let t in turmas){
+
+let op=document.createElement("option")
+op.text=t
+
+turmaAdmin.appendChild(op)
+
+let li=document.createElement("li")
+
+li.innerHTML=t+" <button onclick='removerTurma(\""+t+"\")'>remover</button>"
+
+listaTurmas.appendChild(li)
+
+}
+
+listarAlunosAdmin()
+mostrarHistorico()
+
+}
+
+function criarTurma(){
+
+let t=novaTurma.value
+
+if(!t)return
+
+turmas[t]=[]
+
+salvar()
+
+carregarAdmin()
+
+}
+
+function removerTurma(t){
+
+delete turmas[t]
+
+salvar()
+
+carregarAdmin()
+
+}
+
+function criarAluno(){
+
+let t=turmaAdmin.value
+
+let nome=novoAluno.value
+
+if(!nome)return
+
+turmas[t].push({
+
+nome:nome,
+
+saldo:0,
+
+historico:[]
+
+})
+
+salvar()
+
+listarAlunosAdmin()
+
+}
+
+function listarAlunosAdmin(){
+
+let t=turmaAdmin.value
+
+listaAlunos.innerHTML=""
+
+if(!t)return
+
+turmas[t].forEach((a,i)=>{
+
+let li=document.createElement("li")
+
+li.innerHTML=a.nome+" <button onclick='removerAluno(\""+t+"\","+i+")'>remover</button>"
+
+listaAlunos.appendChild(li)
+
+})
+
+}
+
+function removerAluno(t,i){
+
+turmas[t].splice(i,1)
+
+salvar()
+
+listarAlunosAdmin()
+
+}
+
+function mostrarHistorico(){
+
+historicoGeral.innerHTML=""
+
+historico.forEach(h=>{
+
+let li=document.createElement("li")
+
+li.innerText=h.data+" - "+h.turma+" - "+h.aluno+" - "+h.acao
+
+historicoGeral.appendChild(li)
+
+})
+
+}
+
+function limparHistorico(){
+
+historico=[]
+
+for(let t in turmas){
+
+turmas[t].forEach(a=>a.historico=[])
+
+}
+
+salvar()
+
+mostrarHistorico()
+
+}
+
+if(localStorage.getItem("tipo"))mostrarTela()
+
+</script>
+
+</body>
+</html><!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.11.11/lib/p5.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.11.11/lib/addons/p5.sound.min.js"></script>
+    
+    
+    
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <meta charset="utf-8" />
+
+  </head>
+  <body>
+    <main>
+    </main>
+    <script src="sketch.js"></script>
+  </body>
+</html>
